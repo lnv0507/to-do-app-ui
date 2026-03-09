@@ -57,7 +57,9 @@ export function TodoStats() {
             </div>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold tracking-tight">{value}</p>
+            <p className="text-3xl font-bold tracking-tight">
+              {value}
+            </p>
             {label === "Completed" && (
               <div className="mt-2">
                 <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">

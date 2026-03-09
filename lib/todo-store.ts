@@ -1,17 +1,20 @@
 import { create } from "zustand"
-import { persist } from "zustand/middleware"
 import type { Todo, TodoFilters } from "@/types/todo"
+import * as api from "./todo-api"
 
 interface TodoStore {
   todos: Todo[]
   filters: TodoFilters
+  isLoading: boolean
+  error: string | null
 
-  // Actions
-  addTodo: (todo: Omit<Todo, "id" | "createdAt" | "updatedAt">) => void
-  updateTodo: (id: string, updates: Partial<Omit<Todo, "id" | "createdAt">>) => void
-  deleteTodo: (id: string) => void
-  toggleTodo: (id: string) => void
-  clearCompleted: () => void
+  // API Actions
+  fetchTodos: () => Promise<void>
+  addTodo: (todo: Omit<Todo, "id" | "createdAt" | "updatedAt" | "completed">) => Promise<void>
+  updateTodo: (id: string, todo: Omit<Todo, "id" | "createdAt" | "updatedAt">) => Promise<void>
+  deleteTodo: (id: string) => Promise<void>
+  toggleTodo: (id: string) => Promise<void>
+  clearCompleted: () => Promise<void>
 
   // Filters
   setFilter: (filters: Partial<TodoFilters>) => void
@@ -37,104 +40,118 @@ const defaultFilters: TodoFilters = {
   search: "",
 }
 
-const SEED_TODOS: Todo[] = [
-  {
-    id: "1",
-    title: "Design the new dashboard layout",
-    description: "Create wireframes and high-fidelity mockups for the admin dashboard.",
-    completed: false,
-    priority: "high",
-    category: "Design",
-    createdAt: new Date("2026-03-01").toISOString(),
-    updatedAt: new Date("2026-03-01").toISOString(),
-    dueDate: new Date("2026-03-10").toISOString(),
-  },
-  {
-    id: "2",
-    title: "Set up CI/CD pipeline",
-    description: "Configure GitHub Actions for automated testing and deployment.",
-    completed: true,
-    priority: "high",
-    category: "DevOps",
-    createdAt: new Date("2026-03-02").toISOString(),
-    updatedAt: new Date("2026-03-03").toISOString(),
-  },
-  {
-    id: "3",
-    title: "Write unit tests for auth module",
-    description: "Achieve at least 85% coverage on the authentication service.",
-    completed: false,
-    priority: "medium",
-    category: "Engineering",
-    createdAt: new Date("2026-03-02").toISOString(),
-    updatedAt: new Date("2026-03-02").toISOString(),
-    dueDate: new Date("2026-03-12").toISOString(),
-  },
-  {
-    id: "4",
-    title: "Update project documentation",
-    description: "Revise README and API docs to reflect recent changes.",
-    completed: false,
-    priority: "low",
-    category: "Docs",
-    createdAt: new Date("2026-03-03").toISOString(),
-    updatedAt: new Date("2026-03-03").toISOString(),
-  },
-  {
-    id: "5",
-    title: "Conduct team retrospective",
-    description: "Facilitate the sprint retrospective and capture action items.",
-    completed: true,
-    priority: "medium",
-    category: "Management",
-    createdAt: new Date("2026-03-04").toISOString(),
-    updatedAt: new Date("2026-03-04").toISOString(),
-  },
-]
+export const useTodoStore = create<TodoStore>()((set, get) => ({
+  todos: [],
+  filters: defaultFilters,
+  isLoading: false,
+  error: null,
 
-export const useTodoStore = create<TodoStore>()(
-  persist(
-    (set, get) => ({
-      todos: SEED_TODOS,
-      filters: defaultFilters,
-
-      addTodo: (todo) => {
-        const now = new Date().toISOString()
-        const newTodo: Todo = {
-          ...todo,
-          id: crypto.randomUUID(),
-          createdAt: now,
-          updatedAt: now,
+      // Fetch all todos from API
+      fetchTodos: async () => {
+        set({ isLoading: true, error: null })
+        try {
+          const todos = await api.fetchTodos()
+          set({ todos, isLoading: false })
+        } catch (error) {
+          set({ 
+            error: error instanceof Error ? error.message : "Failed to fetch todos",
+            isLoading: false 
+          })
         }
-        set((state) => ({ todos: [newTodo, ...state.todos] }))
       },
 
-      updateTodo: (id, updates) => {
-        set((state) => ({
-          todos: state.todos.map((t) =>
-            t.id === id
-              ? { ...t, ...updates, updatedAt: new Date().toISOString() }
-              : t
-          ),
-        }))
+      // Add new todo via API
+      addTodo: async (todo) => {
+        set({ isLoading: true, error: null })
+        try {
+          const newTodo = await api.createTodo(todo)
+          set((state) => ({ 
+            todos: [newTodo, ...state.todos],
+            isLoading: false 
+          }))
+        } catch (error) {
+          set({ 
+            error: error instanceof Error ? error.message : "Failed to create todo",
+            isLoading: false 
+          })
+          throw error
+        }
       },
 
-      deleteTodo: (id) => {
-        set((state) => ({ todos: state.todos.filter((t) => t.id !== id) }))
+      // Update todo via API
+      updateTodo: async (id, todoData) => {
+        set({ isLoading: true, error: null })
+        try {
+          const updatedTodo = await api.updateTodo(id, todoData)
+          set((state) => ({
+            todos: state.todos.map((t) => t.id === id ? updatedTodo : t),
+            isLoading: false
+          }))
+        } catch (error) {
+          set({ 
+            error: error instanceof Error ? error.message : "Failed to update todo",
+            isLoading: false 
+          })
+          throw error
+        }
       },
 
-      toggleTodo: (id) => {
-        set((state) => ({
-          todos: state.todos.map((t) =>
-            t.id === id
-              ? { ...t, completed: !t.completed, updatedAt: new Date().toISOString() }
-              : t
-          ),
-        }))
+      // Delete todo via API
+      deleteTodo: async (id) => {
+        set({ isLoading: true, error: null })
+        try {
+          await api.deleteTodo(id)
+          set((state) => ({ 
+            todos: state.todos.filter((t) => t.id !== id),
+            isLoading: false 
+          }))
+        } catch (error) {
+          set({ 
+            error: error instanceof Error ? error.message : "Failed to delete todo",
+            isLoading: false 
+          })
+          throw error
+        }
       },
 
-      clearCompleted: () => {
-        set((state) => ({ todos: state.todos.filter((t) => !t.completed) }))
+      // Toggle todo completion via API
+      toggleTodo: async (id) => {
+        const todo = get().todos.find((t) => t.id === id)
+        if (!todo) return
+
+        set({ isLoading: true, error: null })
+        try {
+          const updatedTodo = await api.toggleTodoCompletion(todo)
+          set((state) => ({
+            todos: state.todos.map((t) => t.id === id ? updatedTodo : t),
+            isLoading: false
+          }))
+        } catch (error) {
+          set({ 
+            error: error instanceof Error ? error.message : "Failed to toggle todo",
+            isLoading: false 
+          })
+          throw error
+        }
+      },
+
+      // Clear completed todos via API
+      clearCompleted: async () => {
+        const completedIds = get().todos.filter((t) => t.completed).map((t) => t.id)
+        set({ isLoading: true, error: null })
+        try {
+          await Promise.all(completedIds.map((id) => api.deleteTodo(id)))
+          set((state) => ({ 
+            todos: state.todos.filter((t) => !t.completed),
+            isLoading: false 
+          }))
+        } catch (error) {
+          set({ 
+            error: error instanceof Error ? error.message : "Failed to clear completed todos",
+            isLoading: false 
+          })
+          throw error
+        }
       },
 
       setFilter: (filters) => {
@@ -178,9 +195,4 @@ export const useTodoStore = create<TodoStore>()(
         const { todos } = get()
         return Array.from(new Set(todos.map((t) => t.category))).sort()
       },
-    }),
-    {
-      name: "todo-store",
-    }
-  )
-)
+}))

@@ -44,11 +44,15 @@ const CATEGORIES = ["Design", "Engineering", "DevOps", "Docs", "Management", "Re
 interface TodoFormProps {
   todo?: Todo
   trigger?: React.ReactNode
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
   onClose?: () => void
 }
 
-export function TodoForm({ todo, trigger, onClose }: TodoFormProps) {
-  const [open, setOpen] = React.useState(false)
+export function TodoForm({ todo, trigger, open: controlledOpen, onOpenChange, onClose }: TodoFormProps) {
+  const [internalOpen, setInternalOpen] = React.useState(false)
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen
+  const setOpen = onOpenChange || setInternalOpen
   const addTodo = useTodoStore((s) => s.addTodo)
   const updateTodo = useTodoStore((s) => s.updateTodo)
 
@@ -75,37 +79,71 @@ export function TodoForm({ todo, trigger, onClose }: TodoFormProps) {
   const priority = watch("priority")
   const category = watch("category")
 
-  const onSubmit = (data: FormValues) => {
-    if (isEdit && todo) {
-      updateTodo(todo.id, {
-        ...data,
-        dueDate: data.dueDate ? new Date(data.dueDate).toISOString() : undefined,
+  // Reset form when opening with todo data
+  React.useEffect(() => {
+    if (open && todo) {
+      reset({
+        title: todo.title,
+        description: todo.description ?? "",
+        priority: todo.priority,
+        category: todo.category,
+        dueDate: todo.dueDate ? format(new Date(todo.dueDate), "yyyy-MM-dd") : "",
       })
-    } else {
-      addTodo({
-        title: data.title,
-        description: data.description,
-        priority: data.priority as Priority,
-        category: data.category,
-        completed: false,
-        dueDate: data.dueDate ? new Date(data.dueDate).toISOString() : undefined,
+    } else if (open && !todo) {
+      reset({
+        title: "",
+        description: "",
+        priority: "medium",
+        category: "",
+        dueDate: "",
       })
     }
-    reset()
-    setOpen(false)
-    onClose?.()
+  }, [open, todo, reset])
+
+  const onSubmit = async (data: FormValues) => {
+    console.log("Form submitted with data:", data)
+    try {
+      if (isEdit && todo) {
+        console.log("Updating todo:", todo.id, "with dueDate:", data.dueDate)
+        await updateTodo(todo.id, {
+          title: data.title,
+          description: data.description,
+          priority: data.priority as Priority,
+          category: data.category,
+          completed: todo.completed,
+          dueDate: data.dueDate ? new Date(data.dueDate).toISOString() : undefined,
+        })
+      } else {
+        console.log("Creating todo with dueDate:", data.dueDate)
+        await addTodo({
+          title: data.title,
+          description: data.description || undefined,
+          priority: data.priority as Priority,
+          category: data.category,
+          dueDate: data.dueDate ? new Date(data.dueDate).toISOString() : undefined,
+        })
+      }
+      reset()
+      setOpen(false)
+      onClose?.()
+    } catch (error) {
+      console.error("Failed to save todo:", error)
+      // Error is already handled in the store
+    }
   }
 
   return (
     <Sheet open={open} onOpenChange={(v) => { setOpen(v); if (!v) onClose?.() }}>
-      <SheetTrigger asChild>
-        {trigger ?? (
-          <Button className="gap-2">
-            <Plus className="size-4" />
-            Add Task
-          </Button>
-        )}
-      </SheetTrigger>
+      {controlledOpen === undefined && (
+        <SheetTrigger asChild>
+          {trigger || (
+            <Button className="gap-2">
+              <Plus className="size-4" />
+              Add Task
+            </Button>
+          )}
+        </SheetTrigger>
+      )}
       <SheetContent className="flex flex-col gap-0 sm:max-w-md">
         <SheetHeader className="px-6 py-4 border-b">
           <SheetTitle>{isEdit ? "Edit Task" : "New Task"}</SheetTitle>
@@ -180,10 +218,7 @@ export function TodoForm({ todo, trigger, onClose }: TodoFormProps) {
 
             {/* Due Date */}
             <div className="flex flex-col gap-2">
-              <Label htmlFor="dueDate">
-                <CalendarIcon className="size-3.5" />
-                Due Date
-              </Label>
+              <Label htmlFor="dueDate">Due Date</Label>
               <Input
                 id="dueDate"
                 type="date"

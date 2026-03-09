@@ -40,7 +40,7 @@ export function TodoItem({ todo, dragHandleProps }: TodoItemProps) {
   const toggleTodo = useTodoStore((s) => s.toggleTodo)
   const deleteTodo = useTodoStore((s) => s.deleteTodo)
 
-  const priority = PRIORITY_CONFIG[todo.priority]
+  const priority = PRIORITY_CONFIG[todo.priority] || PRIORITY_CONFIG.medium
 
   const dueDateInfo = React.useMemo(() => {
     if (!todo.dueDate) return null
@@ -72,7 +72,13 @@ export function TodoItem({ todo, dragHandleProps }: TodoItemProps) {
       <div className="mt-0.5 shrink-0">
         <Checkbox
           checked={todo.completed}
-          onCheckedChange={() => toggleTodo(todo.id)}
+          onCheckedChange={async () => {
+            try {
+              await toggleTodo(todo.id)
+            } catch (error) {
+              console.error("Failed to toggle todo:", error)
+            }
+          }}
           aria-label={`Mark "${todo.title}" as ${todo.completed ? "incomplete" : "complete"}`}
         />
       </div>
@@ -106,7 +112,13 @@ export function TodoItem({ todo, dragHandleProps }: TodoItemProps) {
                 <Pencil className="size-3.5 mr-2" />
                 Edit
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => toggleTodo(todo.id)}>
+              <DropdownMenuItem onClick={async () => {
+                try {
+                  await toggleTodo(todo.id)
+                } catch (error) {
+                  console.error("Failed to toggle todo:", error)
+                }
+              }}>
                 <Checkbox
                   checked={todo.completed}
                   className="size-3.5 mr-2 pointer-events-none"
@@ -116,7 +128,13 @@ export function TodoItem({ todo, dragHandleProps }: TodoItemProps) {
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 variant="destructive"
-                onClick={() => deleteTodo(todo.id)}
+                onClick={async () => {
+                  try {
+                    await deleteTodo(todo.id)
+                  } catch (error) {
+                    console.error("Failed to delete todo:", error)
+                  }
+                }}
               >
                 <Trash2 className="size-3.5 mr-2" />
                 Delete
@@ -162,10 +180,13 @@ export function TodoItem({ todo, dragHandleProps }: TodoItemProps) {
         </div>
       </div>
 
-      {/* Hidden edit form trigger */}
-      {editOpen && (
-        <TodoForm todo={todo} trigger={<span />} onClose={() => setEditOpen(false)} />
-      )}
+      {/* Edit form */}
+      <TodoForm 
+        todo={todo} 
+        open={editOpen} 
+        onOpenChange={setEditOpen}
+        onClose={() => setEditOpen(false)} 
+      />
     </div>
   )
 }

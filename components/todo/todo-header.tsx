@@ -23,7 +23,13 @@ export function TodoHeader() {
           <Button
             variant="outline"
             size="sm"
-            onClick={clearCompleted}
+            onClick={async () => {
+              try {
+                await clearCompleted()
+              } catch (error) {
+                console.error("Failed to clear completed todos:", error)
+              }
+            }}
             className="gap-2 text-destructive hover:text-destructive"
           >
             <Trash2 className="size-4" />

@@ -1,16 +1,23 @@
+"use client"
+
+import { useEffect } from "react"
 import { CheckSquare } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { TodoHeader } from "@/components/todo/todo-header"
 import { TodoStats } from "@/components/todo/todo-stats"
 import { TodoFilters } from "@/components/todo/todo-filters"
 import { TodoList } from "@/components/todo/todo-list"
-
-export const metadata = {
-  title: "My Tasks · Todo App",
-  description: "Manage your tasks with ease.",
-}
+import { useTodoStore } from "@/lib/todo-store"
 
 export default function TodosPage() {
+  const fetchTodos = useTodoStore((state) => state.fetchTodos)
+  const isLoading = useTodoStore((state) => state.isLoading)
+  const error = useTodoStore((state) => state.error)
+
+  // Fetch todos on component mount
+  useEffect(() => {
+    fetchTodos()
+  }, [fetchTodos])
   return (
     <div className="min-h-screen bg-background">
       {/* Top Navbar */}
@@ -26,6 +33,12 @@ export default function TodosPage() {
 
       {/* Main Content */}
       <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+        {error && (
+          <div className="mb-6 rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
+            <strong>Error:</strong> {error}
+          </div>
+        )}
+
         <div className="flex flex-col gap-8">
           {/* Header */}
           <TodoHeader />
@@ -40,7 +53,13 @@ export default function TodosPage() {
 
           {/* List */}
           <div className="flex flex-col gap-3">
-            <TodoList />
+            {isLoading && !error ? (
+              <div className="rounded-xl border bg-card p-8 text-center text-muted-foreground">
+                Loading tasks...
+              </div>
+            ) : (
+              <TodoList />
+            )}
           </div>
         </div>
       </main>

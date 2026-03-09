@@ -65,6 +65,7 @@ export function TodoFilters() {
         <div className="flex gap-2 flex-wrap">
           {/* Status */}
           <Select
+            key="status-select"
             value={filters.status}
             onValueChange={(v) => setFilter({ status: v as Status })}
           >
@@ -82,6 +83,7 @@ export function TodoFilters() {
 
           {/* Priority */}
           <Select
+            key="priority-select"
             value={filters.priority}
             onValueChange={(v) => setFilter({ priority: v as Priority | "all" })}
           >
@@ -99,6 +101,7 @@ export function TodoFilters() {
 
           {/* Category */}
           <Select
+            key="category-select"
             value={filters.category}
             onValueChange={(v) => setFilter({ category: v })}
           >
@@ -106,9 +109,9 @@ export function TodoFilters() {
               <SelectValue placeholder="Category" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
+              <SelectItem key="__all__" value="all">All Categories</SelectItem>
               {categories.map((cat) => (
-                <SelectItem key={cat} value={cat}>
+                <SelectItem key={`cat-${cat}`} value={cat}>
                   {cat}
                 </SelectItem>
               ))}
@@ -117,7 +120,7 @@ export function TodoFilters() {
 
           {/* Reset */}
           {isFiltered && (
-            <Button variant="ghost" size="sm" onClick={resetFilters} className="gap-1.5">
+            <Button key="reset-button" variant="ghost" size="sm" onClick={resetFilters} className="gap-1.5">
               <X className="size-3.5" />
               Reset
             </Button>
@@ -128,28 +131,28 @@ export function TodoFilters() {
       {/* Active filter badges */}
       {isFiltered && (
         <div className="flex items-center gap-1.5 flex-wrap">
-          <SlidersHorizontal className="size-3.5 text-muted-foreground" />
-          <span className="text-xs text-muted-foreground">Filters:</span>
+          <SlidersHorizontal key="icon" className="size-3.5 text-muted-foreground" />
+          <span key="label" className="text-xs text-muted-foreground">Filters:</span>
           {filters.status !== "all" && (
-            <Badge variant="secondary" className="gap-1 text-xs cursor-pointer" onClick={() => setFilter({ status: "all" })}>
+            <Badge key="status" variant="secondary" className="gap-1 text-xs cursor-pointer" onClick={() => setFilter({ status: "all" })}>
               {filters.status}
               <X className="size-3" />
             </Badge>
           )}
           {filters.priority !== "all" && (
-            <Badge variant="secondary" className="gap-1 text-xs cursor-pointer" onClick={() => setFilter({ priority: "all" })}>
+            <Badge key="priority" variant="secondary" className="gap-1 text-xs cursor-pointer" onClick={() => setFilter({ priority: "all" })}>
               {filters.priority}
               <X className="size-3" />
             </Badge>
           )}
           {filters.category !== "all" && (
-            <Badge variant="secondary" className="gap-1 text-xs cursor-pointer" onClick={() => setFilter({ category: "all" })}>
+            <Badge key="category" variant="secondary" className="gap-1 text-xs cursor-pointer" onClick={() => setFilter({ category: "all" })}>
               {filters.category}
               <X className="size-3" />
             </Badge>
           )}
           {filters.search && (
-            <Badge variant="secondary" className="gap-1 text-xs cursor-pointer" onClick={() => setFilter({ search: "" })}>
+            <Badge key="search" variant="secondary" className="gap-1 text-xs cursor-pointer" onClick={() => setFilter({ search: "" })}>
               &quot;{filters.search}&quot;
               <X className="size-3" />
             </Badge>
