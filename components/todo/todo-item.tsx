@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import Image from "next/image"
 import { format, isPast, isToday } from "date-fns"
 import {
   CalendarIcon,
@@ -148,6 +149,19 @@ export function TodoItem({ todo, dragHandleProps }: TodoItemProps) {
           <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">
             {todo.description}
           </p>
+        )}
+
+        {todo.imageUrl && (
+          <div className="relative mt-2 h-32 w-full max-w-xs overflow-hidden rounded-lg border bg-muted/20 shadow-xs">
+            <Image
+              src={todo.imageUrl}
+              alt={todo.title}
+              fill
+              sizes="(max-width: 640px) 100vw, 320px"
+              className="object-cover"
+              unoptimized
+            />
+          </div>
         )}
 
         {/* Meta row */}

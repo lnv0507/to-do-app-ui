@@ -1,4 +1,5 @@
 export { TodoHeader } from "./todo-header"
+export { NotificationBell } from "./notification-bell"
 export { TodoStats } from "./todo-stats"
 export { TodoFilters } from "./todo-filters"
 export { TodoList } from "./todo-list"

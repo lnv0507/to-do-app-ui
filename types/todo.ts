@@ -5,6 +5,7 @@ export interface Todo {
   id: string
   title: string
   description?: string
+  imageUrl?: string
   completed: boolean
   priority: Priority
   category: string
@@ -18,4 +19,12 @@ export interface TodoFilters {
   priority: Priority | "all"
   category: string
   search: string
+}
+
+export interface DueTaskNotification {
+  id: string
+  title: string
+  dueDate: string
+  priority: Priority
+  flag: boolean // false = unread, true = read
 }

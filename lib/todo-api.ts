@@ -1,4 +1,4 @@
-import type { Todo, Priority } from "@/types/todo"
+import type { Todo, Priority, DueTaskNotification } from "@/types/todo"
 
 // Configure your API base URL here
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
@@ -11,6 +11,7 @@ interface ApiTodo {
   id: number
   title: string
   description?: string
+  imageUrl?: string
   completed: boolean
   priority: ApiPriority
   specification: string | null  // Backend uses 'specification' not 'category'
@@ -41,33 +42,38 @@ function fromApiPriority(priority: ApiPriority): Priority {
   return map[priority]
 }
 
-// Transform API response to frontend Todo type
-function transformApiTodo(apiTodo: ApiTodo): Todo {
-  // Convert dd/MM/yyyy to ISO format for frontend
-  let dueDate: string | undefined
-  const dueDateValue = apiTodo.dueDate || apiTodo.due_date  // Check both camelCase and snake_case
-  if (dueDateValue) {
-    const [day, month, year] = dueDateValue.split('/')
-    dueDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
-  }
-
-  return {
-    id: String(apiTodo.id),  // Convert number to string
-    title: apiTodo.title,
-    description: apiTodo.description,
-    completed: apiTodo.completed,
-    priority: fromApiPriority(apiTodo.priority),
-    category: apiTodo.specification || "Other",  // Map specification -> category
-    createdAt: apiTodo.createdAt,
-    updatedAt: apiTodo.updatedAt,
-    dueDate: dueDate,
-  }
+// Convert dd/MM/yyyy (backend) → yyyy-MM-dd (frontend ISO)
+function parseDdMmYyyy(raw: string): string {
+  const [day, month, year] = raw.split('/')
+  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
 }
 
-// Convert ISO date (yyyy-MM-dd) to dd/MM/yyyy format for backend
-function formatDateForBackend(isoDate: string): string {
-  const [year, month, day] = isoDate.split('-')
+// Convert yyyy-MM-dd (frontend ISO) → dd/MM/yyyy (backend @JsonFormat)
+function toBackendDate(iso: string): string {
+  const [year, month, day] = iso.split('T')[0].split('-')
   return `${day}/${month}/${year}`
+}
+
+// Transform API response to frontend Todo type
+function transformApiTodo(apiTodo: ApiTodo): Todo {
+  // Backend serializes dueDate as dd/MM/yyyy via @JsonFormat
+  const dueDateValue = apiTodo.dueDate || apiTodo.due_date
+  const dueDate = dueDateValue
+    ? (dueDateValue.includes('/') ? parseDdMmYyyy(dueDateValue) : dueDateValue.split('T')[0])
+    : undefined
+
+  return {
+    id: String(apiTodo.id),
+    title: apiTodo.title,
+    description: apiTodo.description,
+    imageUrl: apiTodo.imageUrl,
+    completed: apiTodo.completed,
+    priority: fromApiPriority(apiTodo.priority),
+    category: apiTodo.specification || "Other",
+    createdAt: apiTodo.createdAt,
+    updatedAt: apiTodo.updatedAt,
+    dueDate,
+  }
 }
 
 // GET /api/tasks - Fetch all tasks
@@ -114,21 +120,21 @@ export async function createTodo(
   const cleanTodo: {
     title: string
     priority: ApiPriority
-    specification: string  // Backend uses 'specification' not 'category'
+    specification: string
     description?: string
-    due_date?: string  // Try snake_case to match @Column name
+    imageUrl?: string | null
+    dueDate?: string
   } = {
     title: todo.title,
     priority: toApiPriority(todo.priority),
-    specification: todo.category,  // Map category -> specification
+    specification: todo.category,
   }
-  
+
   if (todo.description) cleanTodo.description = todo.description
-  
-  // Handle dueDate: convert format or omit if not set
+  if (todo.imageUrl) cleanTodo.imageUrl = todo.imageUrl
+
   if (todo.dueDate) {
-    const dateOnly = todo.dueDate.split('T')[0]  // Extract yyyy-MM-dd from ISO string
-    cleanTodo.due_date = formatDateForBackend(dateOnly)
+    cleanTodo.dueDate = toBackendDate(todo.dueDate)  // dd/MM/yyyy for @JsonFormat
   }
 
   const response = await fetch(`${API_BASE_URL}/api/tasks`, {
@@ -154,35 +160,29 @@ export async function updateTodo(
   id: string,
   todo: Omit<Todo, "id" | "createdAt" | "updatedAt">
 ): Promise<Todo> {
-  // Build API payload with all fields and transform priority to uppercase
   const cleanTodo: {
     title: string
     completed: boolean
     priority: ApiPriority
-    specification: string  // Backend uses 'specification' not 'category'
+    specification: string
     description?: string
-    due_date?: string | null  // Try snake_case to match @Column(name = "due_date")
+    imageUrl?: string | null
+    dueDate?: string | null
   } = {
     title: todo.title,
     completed: todo.completed,
     priority: toApiPriority(todo.priority),
-    specification: todo.category,  // Map category -> specification
-  }
-  
-  if (todo.description) cleanTodo.description = todo.description
-  
-  // Handle dueDate: convert format or set null to clear
-  if (todo.dueDate) {
-    const dateOnly = todo.dueDate.split('T')[0]  // Extract yyyy-MM-dd from ISO string
-    console.log("updateTodo - converting dueDate:", dateOnly)
-    cleanTodo.due_date = formatDateForBackend(dateOnly)
-    console.log("updateTodo - formatted due_date:", cleanTodo.due_date)
-  } else {
-    console.log("updateTodo - clearing dueDate (setting to null)")
-    cleanTodo.due_date = null  // Explicitly set null to clear the date
+    specification: todo.category,
+    imageUrl: todo.imageUrl ?? null,
   }
 
-  console.log("updateTodo - final payload:", JSON.stringify(cleanTodo, null, 2))
+  if (todo.description) cleanTodo.description = todo.description
+
+  if (todo.dueDate) {
+    cleanTodo.dueDate = toBackendDate(todo.dueDate)  // dd/MM/yyyy for @JsonFormat
+  } else {
+    cleanTodo.dueDate = null  // clear the date
+  }
 
   const response = await fetch(`${API_BASE_URL}/api/tasks/${id}`, {
     method: "PUT",
@@ -198,9 +198,6 @@ export async function updateTodo(
   }
 
   const data: ApiTodo = await response.json()
-  console.log("updateTodo - backend response:", data)
-  console.log("updateTodo - backend response dueDate field:", data.dueDate)
-  console.log("updateTodo - full response keys:", Object.keys(data))
   return transformApiTodo(data)
 }
 
@@ -224,9 +221,115 @@ export async function toggleTodoCompletion(todo: Todo): Promise<Todo> {
   return updateTodo(todo.id, {
     title: todo.title,
     description: todo.description,
+    imageUrl: todo.imageUrl,
     completed: !todo.completed,
     priority: todo.priority,
     category: todo.category,
     dueDate: todo.dueDate,
   })
+}
+
+// POST /api/tasks/{id}/image - Upload task image to S3
+export function uploadTodoImage(
+  id: string,
+  file: File,
+  onProgress?: (percent: number) => void
+): Promise<string> {
+  const formData = new FormData()
+  formData.append("file", file)
+
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open("POST", `${API_BASE_URL}/api/tasks/${id}/image`)
+
+    xhr.upload.onprogress = (event) => {
+      if (!onProgress || !event.lengthComputable) return
+      const percent = Math.round((event.loaded / event.total) * 100)
+      onProgress(percent)
+    }
+
+    xhr.onerror = () => {
+      reject(new Error("Failed to upload image: network error"))
+    }
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const data = JSON.parse(xhr.responseText) as { imageUrl?: string }
+          if (!data.imageUrl) {
+            reject(new Error("Upload response missing imageUrl"))
+            return
+          }
+          resolve(data.imageUrl)
+        } catch {
+          reject(new Error("Failed to parse upload response"))
+        }
+        return
+      }
+
+      reject(new Error(`Failed to upload image: ${xhr.status} - ${xhr.responseText}`))
+    }
+
+    xhr.send(formData)
+  })
+}
+
+// DELETE /api/tasks/{id}/image - Delete task image from S3
+export async function deleteTodoImage(id: string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/tasks/${id}/image`, {
+    method: "DELETE",
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`Failed to delete image: ${response.statusText} - ${errorText}`)
+  }
+}
+
+// Parse dueDate from backend regardless of format (dd/MM/yyyy or ISO yyyy-MM-dd)
+function parseRawDueDate(apiTodo: ApiTodo): string {
+  const raw = apiTodo.dueDate || apiTodo.due_date
+  if (!raw) return ""
+  // dd/MM/yyyy → yyyy-MM-dd
+  if (raw.includes('/')) {
+    const [day, month, year] = raw.split('/')
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+  }
+  // ISO yyyy-MM-ddTHH:mm:ss or yyyy-MM-dd → take date part only
+  return raw.split('T')[0]
+}
+
+// Transform a raw backend Task array (from REST or STOMP) into DueTaskNotification[]
+export function transformDueTasksPayload(raw: unknown[]): DueTaskNotification[] {
+  return (raw as ApiTodo[]).map((apiTodo) => {
+    const todo = transformApiTodo(apiTodo)
+    return {
+      id: todo.id,
+      title: todo.title,
+      dueDate: parseRawDueDate(apiTodo), // read directly from raw to avoid transform loss
+      priority: todo.priority,
+      flag: false,
+    }
+  })
+}
+
+// GET /api/tasks/due - Fetch tasks that are due/upcoming for notifications
+export async function fetchDueTasks(): Promise<DueTaskNotification[]> {
+  const response = await fetch(`${API_BASE_URL}/api/tasks/due`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  })
+
+  // 204 No Content = no due tasks
+  if (response.status === 204) return []
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`Failed to fetch due tasks: ${response.statusText} - ${errorText}`)
+  }
+
+  const data: ApiTodo[] = await response.json()
+  return transformDueTasksPayload(data)
 }

@@ -4,6 +4,7 @@ import { Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useTodoStore } from "@/lib/todo-store"
 import { TodoForm } from "./todo-form"
+import { NotificationBell } from "./notification-bell"
 
 export function TodoHeader() {
   const clearCompleted = useTodoStore((s) => s.clearCompleted)
@@ -19,6 +20,7 @@ export function TodoHeader() {
         </p>
       </div>
       <div className="flex items-center gap-2">
+        <NotificationBell />
         {hasCompleted && (
           <Button
             variant="outline"

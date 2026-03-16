@@ -1,11 +1,13 @@
 "use client"
 
 import * as React from "react"
+import Image from "next/image"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod/v4"
-import { CalendarIcon, Plus } from "lucide-react"
+import { ImagePlus, Plus, Trash2 } from "lucide-react"
 import { format } from "date-fns"
+import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -27,6 +29,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 import { useTodoStore } from "@/lib/todo-store"
+import * as api from "@/lib/todo-api"
 import type { Todo, Priority } from "@/types/todo"
 
 const schema = z.object({
@@ -51,10 +54,18 @@ interface TodoFormProps {
 
 export function TodoForm({ todo, trigger, open: controlledOpen, onOpenChange, onClose }: TodoFormProps) {
   const [internalOpen, setInternalOpen] = React.useState(false)
+  const [selectedFile, setSelectedFile] = React.useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = React.useState<string | undefined>(todo?.imageUrl)
+  const [previewObjectUrl, setPreviewObjectUrl] = React.useState<string | null>(null)
+  const [removeImage, setRemoveImage] = React.useState(false)
+  const [isUploadingImage, setIsUploadingImage] = React.useState(false)
+  const [uploadProgress, setUploadProgress] = React.useState(0)
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen
   const setOpen = onOpenChange || setInternalOpen
   const addTodo = useTodoStore((s) => s.addTodo)
   const updateTodo = useTodoStore((s) => s.updateTodo)
+  const setTodoImage = useTodoStore((s) => s.setTodoImage)
+  const syncTodoById = useTodoStore((s) => s.syncTodoById)
 
   const isEdit = !!todo
 
@@ -89,6 +100,11 @@ export function TodoForm({ todo, trigger, open: controlledOpen, onOpenChange, on
         category: todo.category,
         dueDate: todo.dueDate ? format(new Date(todo.dueDate), "yyyy-MM-dd") : "",
       })
+      setSelectedFile(null)
+      setPreviewUrl(todo.imageUrl)
+      setRemoveImage(false)
+      setIsUploadingImage(false)
+      setUploadProgress(0)
     } else if (open && !todo) {
       reset({
         title: "",
@@ -97,38 +113,111 @@ export function TodoForm({ todo, trigger, open: controlledOpen, onOpenChange, on
         category: "",
         dueDate: "",
       })
+      setSelectedFile(null)
+      setPreviewUrl(undefined)
+      setRemoveImage(false)
+      setIsUploadingImage(false)
+      setUploadProgress(0)
     }
   }, [open, todo, reset])
 
+  React.useEffect(() => {
+    if (!open && previewObjectUrl) {
+      URL.revokeObjectURL(previewObjectUrl)
+      setPreviewObjectUrl(null)
+    }
+  }, [open, previewObjectUrl])
+
+  React.useEffect(() => {
+    return () => {
+      if (previewObjectUrl) {
+        URL.revokeObjectURL(previewObjectUrl)
+      }
+    }
+  }, [previewObjectUrl])
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) {
+      setSelectedFile(null)
+      return
+    }
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Vui long chon file anh hop le")
+      event.target.value = ""
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Kich thuoc anh khong duoc vuot qua 5MB")
+      event.target.value = ""
+      return
+    }
+
+    if (previewObjectUrl) {
+      URL.revokeObjectURL(previewObjectUrl)
+    }
+    const objectUrl = URL.createObjectURL(file)
+    setSelectedFile(file)
+    setRemoveImage(false)
+    setPreviewObjectUrl(objectUrl)
+    setPreviewUrl(objectUrl)
+  }
+
   const onSubmit = async (data: FormValues) => {
-    console.log("Form submitted with data:", data)
     try {
+      const shouldUploadImage = !!selectedFile
+      setIsUploadingImage(shouldUploadImage)
+      setUploadProgress(shouldUploadImage ? 0 : 100)
+
       if (isEdit && todo) {
-        console.log("Updating todo:", todo.id, "with dueDate:", data.dueDate)
         await updateTodo(todo.id, {
           title: data.title,
           description: data.description,
           priority: data.priority as Priority,
           category: data.category,
           completed: todo.completed,
+          imageUrl: todo.imageUrl,
           dueDate: data.dueDate ? new Date(data.dueDate).toISOString() : undefined,
         })
+
+        if (removeImage && todo.imageUrl) {
+          await api.deleteTodoImage(todo.id)
+          setTodoImage(todo.id, undefined)
+          await syncTodoById(todo.id)
+        }
+
+        if (selectedFile) {
+          const imageUrl = await api.uploadTodoImage(todo.id, selectedFile, setUploadProgress)
+          setTodoImage(todo.id, imageUrl)
+          await syncTodoById(todo.id)
+        }
       } else {
-        console.log("Creating todo with dueDate:", data.dueDate)
-        await addTodo({
+        const createdTodo = await addTodo({
           title: data.title,
           description: data.description || undefined,
           priority: data.priority as Priority,
           category: data.category,
           dueDate: data.dueDate ? new Date(data.dueDate).toISOString() : undefined,
         })
+
+        if (selectedFile) {
+          const imageUrl = await api.uploadTodoImage(createdTodo.id, selectedFile, setUploadProgress)
+          setTodoImage(createdTodo.id, imageUrl)
+          await syncTodoById(createdTodo.id)
+        }
       }
       reset()
       setOpen(false)
       onClose?.()
+      toast.success(isEdit ? "Task da duoc cap nhat" : "Task da duoc tao")
     } catch (error) {
       console.error("Failed to save todo:", error)
-      // Error is already handled in the store
+      toast.error(error instanceof Error ? error.message : "Khong the luu task")
+    } finally {
+      setIsUploadingImage(false)
+      setUploadProgress(0)
     }
   }
 
@@ -226,6 +315,85 @@ export function TodoForm({ todo, trigger, open: controlledOpen, onOpenChange, on
                 className="w-full"
               />
             </div>
+
+            {/* Image */}
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="image">Image</Label>
+              <div className="rounded-lg border border-dashed bg-muted/20 p-3">
+                {previewUrl && !removeImage ? (
+                  <div className="relative h-36 w-full overflow-hidden rounded-md border bg-background">
+                    {previewUrl.startsWith("blob:") ? (
+                      // next/image does not reliably handle blob URLs from file inputs.
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={previewUrl}
+                        alt="Task preview"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <Image
+                        src={previewUrl}
+                        alt="Task preview"
+                        fill
+                        sizes="(max-width: 640px) 100vw, 448px"
+                        className="object-cover"
+                        unoptimized
+                      />
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex h-20 items-center justify-center gap-2 rounded-md border border-dashed bg-background text-sm text-muted-foreground">
+                    <ImagePlus className="size-4" />
+                    Chua co anh duoc chon
+                  </div>
+                )}
+
+                <div className="mt-3 flex items-center gap-2">
+                  <Input
+                    id="image"
+                    type="file"
+                    accept="image/jpeg,image/png,image/gif,image/webp"
+                    onChange={handleFileChange}
+                  />
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Ho tro JPEG, PNG, GIF, WEBP. Dung luong toi da 5MB.
+                </p>
+                {selectedFile && (
+                  <p className="mt-1 text-xs font-medium text-foreground">
+                    Da chon: {selectedFile.name}
+                  </p>
+                )}
+              </div>
+
+              {isUploadingImage && (
+                <div className="space-y-1.5">
+                  <p className="text-xs font-medium text-foreground">Dang upload anh: {uploadProgress}%</p>
+                  <div className="h-2 w-full overflow-hidden rounded bg-muted">
+                    <div
+                      className="h-full bg-primary transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+              {isEdit && todo?.imageUrl && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-fit gap-2 text-destructive"
+                  onClick={() => {
+                    setSelectedFile(null)
+                    setPreviewUrl(undefined)
+                    setRemoveImage(true)
+                    setUploadProgress(0)
+                  }}
+                >
+                  <Trash2 className="size-4" />
+                  Xoa anh hien tai
+                </Button>
+              )}
+            </div>
           </div>
 
           <SheetFooter className="px-6 py-4 border-t gap-2">
@@ -233,11 +401,12 @@ export function TodoForm({ todo, trigger, open: controlledOpen, onOpenChange, on
               type="button"
               variant="outline"
               onClick={() => { setOpen(false); onClose?.() }}
+              disabled={isSubmitting || isUploadingImage}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isEdit ? "Save Changes" : "Create Task"}
+            <Button type="submit" disabled={isSubmitting || isUploadingImage}>
+              {isUploadingImage ? "Uploading image..." : isEdit ? "Save Changes" : "Create Task"}
             </Button>
           </SheetFooter>
         </form>

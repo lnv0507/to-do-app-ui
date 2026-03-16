@@ -10,11 +10,13 @@ interface TodoStore {
 
   // API Actions
   fetchTodos: () => Promise<void>
-  addTodo: (todo: Omit<Todo, "id" | "createdAt" | "updatedAt" | "completed">) => Promise<void>
-  updateTodo: (id: string, todo: Omit<Todo, "id" | "createdAt" | "updatedAt">) => Promise<void>
+  addTodo: (todo: Omit<Todo, "id" | "createdAt" | "updatedAt" | "completed">) => Promise<Todo>
+  updateTodo: (id: string, todo: Omit<Todo, "id" | "createdAt" | "updatedAt">) => Promise<Todo>
   deleteTodo: (id: string) => Promise<void>
   toggleTodo: (id: string) => Promise<void>
   clearCompleted: () => Promise<void>
+  setTodoImage: (id: string, imageUrl?: string) => void
+  syncTodoById: (id: string) => Promise<void>
 
   // Filters
   setFilter: (filters: Partial<TodoFilters>) => void
@@ -69,6 +71,7 @@ export const useTodoStore = create<TodoStore>()((set, get) => ({
             todos: [newTodo, ...state.todos],
             isLoading: false 
           }))
+          return newTodo
         } catch (error) {
           set({ 
             error: error instanceof Error ? error.message : "Failed to create todo",
@@ -87,6 +90,7 @@ export const useTodoStore = create<TodoStore>()((set, get) => ({
             todos: state.todos.map((t) => t.id === id ? updatedTodo : t),
             isLoading: false
           }))
+          return updatedTodo
         } catch (error) {
           set({ 
             error: error instanceof Error ? error.message : "Failed to update todo",
@@ -151,6 +155,24 @@ export const useTodoStore = create<TodoStore>()((set, get) => ({
             isLoading: false 
           })
           throw error
+        }
+      },
+
+      setTodoImage: (id, imageUrl) => {
+        set((state) => ({
+          todos: state.todos.map((t) => t.id === id ? { ...t, imageUrl } : t),
+        }))
+      },
+
+      syncTodoById: async (id) => {
+        try {
+          const syncedTodo = await api.fetchTodoById(id)
+          set((state) => ({
+            todos: state.todos.map((t) => t.id === id ? syncedTodo : t),
+          }))
+        } catch (error) {
+          // Keep optimistic UI state if sync fails.
+          console.error("Failed to sync todo by id:", error)
         }
       },
 
