@@ -1,0 +1,52 @@
+import { NextResponse } from "next/server"
+import type { NextRequest } from "next/server"
+
+// Add paths that require authentication
+const protectedPaths = ["/todos", "/profile", "/dashboard"]
+
+// Add paths that are only for guest users (e.g., login, register)
+const guestOnlyPaths = ["/auth/login", "/auth/register", "/auth/confirm-otp", "/auth/verify-device"]
+
+export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl
+  const authToken = request.cookies.get("auth-token")?.value
+
+  // 1. Redirect unauthenticated users from protected paths to login
+  const isProtectedPath = protectedPaths.some(path => pathname.startsWith(path))
+  if (isProtectedPath && !authToken) {
+    const url = new URL("/auth/login", request.url)
+    // Optional: add callback URL
+    url.searchParams.set("from", pathname)
+    return NextResponse.redirect(url)
+  }
+
+  // 2. Redirect authenticated users from guest-only paths to todos
+  const isGuestOnlyPath = guestOnlyPaths.some(path => pathname.startsWith(path))
+  if (isGuestOnlyPath && authToken) {
+    return NextResponse.redirect(new URL("/todos", request.url))
+  }
+
+  // 3. Special case: redirect root / to /todos if authenticated, else /auth/login
+  if (pathname === "/") {
+    if (authToken) {
+      return NextResponse.redirect(new URL("/todos", request.url))
+    } else {
+      return NextResponse.redirect(new URL("/auth/login", request.url))
+    }
+  }
+
+  return NextResponse.next()
+}
+
+export const config = {
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
+    "/((?!api|_next/static|_next/image|favicon.ico).*)",
+  ],
+}

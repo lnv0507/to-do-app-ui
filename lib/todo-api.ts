@@ -1,4 +1,5 @@
 import type { Todo, Priority, DueTaskNotification } from "@/types/todo"
+import { useAuthStore } from "@/lib/auth-store"
 
 // Configure your API base URL here
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
@@ -78,15 +79,21 @@ function transformApiTodo(apiTodo: ApiTodo): Todo {
 
 // GET /api/tasks - Fetch all tasks
 export async function fetchTodos(): Promise<Todo[]> {
+  const { accessToken } = useAuthStore.getState()
+
   const response = await fetch(`${API_BASE_URL}/api/tasks`, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
     },
   })
 
   if (!response.ok) {
     const errorText = await response.text()
+    if (response.status === 401) {
+      // Logic for refresh token could go here or in a wrapper
+    }
     throw new Error(`Failed to fetch todos: ${response.statusText} - ${errorText}`)
   }
 
@@ -96,10 +103,13 @@ export async function fetchTodos(): Promise<Todo[]> {
 
 // GET /api/tasks/{id} - Fetch single task
 export async function fetchTodoById(id: string): Promise<Todo> {
+  const { accessToken } = useAuthStore.getState()
+
   const response = await fetch(`${API_BASE_URL}/api/tasks/${id}`, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
     },
   })
 
@@ -137,10 +147,13 @@ export async function createTodo(
     cleanTodo.dueDate = toBackendDate(todo.dueDate)  // dd/MM/yyyy for @JsonFormat
   }
 
+  const { accessToken } = useAuthStore.getState()
+
   const response = await fetch(`${API_BASE_URL}/api/tasks`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
     },
     body: JSON.stringify(cleanTodo),
   })
@@ -184,10 +197,13 @@ export async function updateTodo(
     cleanTodo.dueDate = null  // clear the date
   }
 
+  const { accessToken } = useAuthStore.getState()
+
   const response = await fetch(`${API_BASE_URL}/api/tasks/${id}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
     },
     body: JSON.stringify(cleanTodo),
   })
@@ -203,10 +219,13 @@ export async function updateTodo(
 
 // DELETE /api/tasks/{id} - Delete task
 export async function deleteTodo(id: string): Promise<void> {
+  const { accessToken } = useAuthStore.getState()
+
   const response = await fetch(`${API_BASE_URL}/api/tasks/${id}`, {
     method: "DELETE",
     headers: {
       "Content-Type": "application/json",
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
     },
   })
 
@@ -239,8 +258,12 @@ export function uploadTodoImage(
   formData.append("file", file)
 
   return new Promise((resolve, reject) => {
+    const { accessToken } = useAuthStore.getState()
     const xhr = new XMLHttpRequest()
     xhr.open("POST", `${API_BASE_URL}/api/tasks/${id}/image`)
+    if (accessToken) {
+      xhr.setRequestHeader("Authorization", `Bearer ${accessToken}`)
+    }
 
     xhr.upload.onprogress = (event) => {
       if (!onProgress || !event.lengthComputable) return
@@ -276,8 +299,13 @@ export function uploadTodoImage(
 
 // DELETE /api/tasks/{id}/image - Delete task image from S3
 export async function deleteTodoImage(id: string): Promise<void> {
+  const { accessToken } = useAuthStore.getState()
+
   const response = await fetch(`${API_BASE_URL}/api/tasks/${id}/image`, {
     method: "DELETE",
+    headers: {
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+    },
   })
 
   if (!response.ok) {
@@ -315,10 +343,13 @@ export function transformDueTasksPayload(raw: unknown[]): DueTaskNotification[] 
 
 // GET /api/tasks/due - Fetch tasks that are due/upcoming for notifications
 export async function fetchDueTasks(): Promise<DueTaskNotification[]> {
+  const { accessToken } = useAuthStore.getState()
+
   const response = await fetch(`${API_BASE_URL}/api/tasks/due`, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
     },
   })
 
