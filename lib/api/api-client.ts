@@ -11,6 +11,7 @@ export const apiClient = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+  withCredentials: true,
 });
 
 // Request Interceptor: Attach the access token to every request

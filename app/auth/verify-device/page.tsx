@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { authApi } from "@/lib/auth-api"
+import { AuthService } from "@/lib/services/auth-service"
 import { useAuthStore } from "@/lib/auth-store"
 
 const verifySchema = z.object({
@@ -25,7 +25,7 @@ function VerifyDeviceForm() {
   const searchParams = useSearchParams()
   const { setAuth } = useAuthStore()
   const [isLoading, setIsLoading] = useState(false)
-  
+
   const token = searchParams.get("token")
   const email = searchParams.get("email")
 
@@ -46,10 +46,10 @@ function VerifyDeviceForm() {
 
   async function onSubmit(data: VerifyFormValues) {
     if (!token) return
-    
+
     setIsLoading(true)
     try {
-      const response = await authApi.verifyDevice({
+      const response = await AuthService.verifyDevice({
         otp: data.otp,
         verificationToken: token
       })
