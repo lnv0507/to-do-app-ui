@@ -13,6 +13,8 @@ interface ApiTodo {
   title: string
   description?: string
   imageUrl?: string
+  isFavorite?: boolean
+  favorite?: boolean
   completed: boolean
   priority: ApiPriority
   specification: string | null  // Backend uses 'specification' not 'category'
@@ -67,6 +69,7 @@ function transformApiTodo(apiTodo: ApiTodo): Todo {
     title: apiTodo.title,
     description: apiTodo.description,
     imageUrl: apiTodo.imageUrl,
+    isFavorite: apiTodo.isFavorite ?? apiTodo.favorite ?? false,
     completed: apiTodo.completed,
     priority: fromApiPriority(apiTodo.priority),
     category: apiTodo.specification || "Other",
@@ -163,11 +166,31 @@ export async function toggleTodoCompletion(todo: Todo): Promise<Todo> {
     title: todo.title,
     description: todo.description,
     imageUrl: todo.imageUrl,
+    isFavorite: todo.isFavorite,
     completed: !todo.completed,
     priority: todo.priority,
     category: todo.category,
     dueDate: todo.dueDate,
   })
+}
+
+// PATCH /api/tasks/{id}/favorite - Toggle favorite status
+export async function toggleTodoFavorite(todo: Todo): Promise<Todo> {
+  const response = await fetch(`${API_BASE_URL}/api/tasks/${todo.id}/favorite`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ isFavorite: !todo.isFavorite }),
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`Failed to toggle favorite: ${response.statusText} - ${errorText}`)
+  }
+
+  const data: ApiTodo = await response.json()
+  return transformApiTodo(data)
 }
 
 // POST /api/tasks/{id}/image - Upload task image to S3

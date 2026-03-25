@@ -6,6 +6,7 @@ export interface Todo {
   title: string
   description?: string
   imageUrl?: string
+  isFavorite?: boolean
   completed: boolean
   priority: Priority
   category: string

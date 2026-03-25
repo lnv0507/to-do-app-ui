@@ -5,6 +5,7 @@ import Image from "next/image"
 import { format, isPast, isToday } from "date-fns"
 import {
   CalendarIcon,
+  Heart,
   Pencil,
   Trash2,
   MoreHorizontal,
@@ -40,6 +41,8 @@ export function TodoItem({ todo, dragHandleProps }: TodoItemProps) {
   const [editOpen, setEditOpen] = React.useState(false)
   const toggleTodo = useTodoStore((s) => s.toggleTodo)
   const deleteTodo = useTodoStore((s) => s.deleteTodo)
+  const toggleFavorite = useTodoStore((s) => s.toggleFavorite)
+  const isFavorite = useTodoStore((s) => s.isFavorite(todo.id))
 
   const priority = PRIORITY_CONFIG[todo.priority] || PRIORITY_CONFIG.medium
 
@@ -95,6 +98,25 @@ export function TodoItem({ todo, dragHandleProps }: TodoItemProps) {
           >
             {todo.title}
           </p>
+
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            className={cn(
+              "shrink-0",
+              isFavorite ? "text-rose-500 hover:text-rose-600" : "text-muted-foreground hover:text-rose-500"
+            )}
+            aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
+            onClick={async () => {
+              try {
+                await toggleFavorite(todo.id)
+              } catch (error) {
+                console.error("Failed to toggle favorite:", error)
+              }
+            }}
+          >
+            <Heart className={cn("size-4", isFavorite && "fill-current")} />
+          </Button>
 
           {/* Actions menu */}
           <DropdownMenu>

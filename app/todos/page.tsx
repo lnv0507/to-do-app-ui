@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect } from "react"
-import { CheckSquare } from "lucide-react"
+import { useEffect, useState } from "react"
+import { CheckSquare, Heart } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { LogoutButton } from "@/components/logout-button"
 import { TodoHeader } from "@/components/todo/todo-header"
@@ -9,11 +9,15 @@ import { TodoStats } from "@/components/todo/todo-stats"
 import { TodoFilters } from "@/components/todo/todo-filters"
 import { TodoList } from "@/components/todo/todo-list"
 import { useTodoStore } from "@/lib/todo-store"
+import { Button } from "@/components/ui/button"
 
 export default function TodosPage() {
+  const [viewMode, setViewMode] = useState<"all" | "favorites">("all")
   const fetchTodos = useTodoStore((state) => state.fetchTodos)
   const isLoading = useTodoStore((state) => state.isLoading)
   const error = useTodoStore((state) => state.error)
+  const todos = useTodoStore((state) => state.todos)
+  const favoriteCount = todos.filter((todo) => !!todo.isFavorite).length
 
   // Fetch todos on component mount
   useEffect(() => {
@@ -55,6 +59,26 @@ export default function TodosPage() {
             <TodoFilters />
           </div>
 
+          {/* View switch */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant={viewMode === "all" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setViewMode("all")}
+            >
+              All Tasks
+            </Button>
+            <Button
+              variant={viewMode === "favorites" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setViewMode("favorites")}
+              className="gap-2"
+            >
+              <Heart className="size-4" />
+              Favorites ({favoriteCount})
+            </Button>
+          </div>
+
           {/* List */}
           <div className="flex flex-col gap-3">
             {isLoading && !error ? (
@@ -62,7 +86,7 @@ export default function TodosPage() {
                 Loading tasks...
               </div>
             ) : (
-              <TodoList />
+              <TodoList mode={viewMode} />
             )}
           </div>
         </div>

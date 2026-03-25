@@ -18,11 +18,13 @@ import {
 } from "@dnd-kit/sortable"
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers"
 import { CSS } from "@dnd-kit/utilities"
-import { CheckCircle2, InboxIcon } from "lucide-react"
+import { CheckCircle2, Heart, InboxIcon } from "lucide-react"
 
 import { useTodoStore } from "@/lib/todo-store"
 import { TodoItem } from "./todo-item"
 import type { Todo } from "@/types/todo"
+
+type TodoListMode = "all" | "favorites"
 
 function SortableTodoItem({ todo }: { todo: Todo }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -42,11 +44,18 @@ function SortableTodoItem({ todo }: { todo: Todo }) {
   )
 }
 
-export function TodoList() {
+interface TodoListProps {
+  mode?: TodoListMode
+}
+
+export function TodoList({ mode = "all" }: TodoListProps) {
   const getFilteredTodos = useTodoStore((s) => s.getFilteredTodos)
   const todos = useTodoStore((s) => s.todos)
 
-  const filtered = getFilteredTodos()
+  const filteredTodos = getFilteredTodos()
+  const filtered = mode === "favorites"
+    ? filteredTodos.filter((todo) => !!todo.isFavorite)
+    : filteredTodos
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -74,7 +83,15 @@ export function TodoList() {
 
     return (
       <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed bg-muted/30 py-16 text-center">
-        {hasCompletedAll ? (
+        {mode === "favorites" ? (
+          <>
+            <Heart className="size-10 text-rose-400" />
+            <div>
+              <p className="font-semibold">No favorite tasks yet</p>
+              <p className="text-sm text-muted-foreground mt-1">Tap the heart icon on any task card to save it here.</p>
+            </div>
+          </>
+        ) : hasCompletedAll ? (
           <>
             <CheckCircle2 className="size-10 text-emerald-500" />
             <div>
