@@ -1,8 +1,6 @@
 import { apiClient } from "@/lib/api/api-client"
 import type { Todo, Priority, DueTaskNotification } from "@/types/todo"
 
-// Configure your API base URL here
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
 
 // Backend priority enum (uppercase)
 type ApiPriority = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
@@ -176,25 +174,14 @@ export async function toggleTodoCompletion(todo: Todo): Promise<Todo> {
 
 // PATCH /api/tasks/{id}/favorite - Toggle favorite status
 export async function toggleTodoFavorite(todo: Todo): Promise<Todo> {
-  const response = await fetch(`${API_BASE_URL}/api/tasks/${todo.id}/favorite`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ isFavorite: !todo.isFavorite }),
+  const { data } = await apiClient.patch<ApiTodo>(`/api/tasks/${todo.id}/favorite`, {
+    isFavorite: !todo.isFavorite,
   })
-
-  if (!response.ok) {
-    const errorText = await response.text()
-    throw new Error(`Failed to toggle favorite: ${response.statusText} - ${errorText}`)
-  }
-
-  const data: ApiTodo = await response.json()
   return transformApiTodo(data)
 }
 
 // POST /api/tasks/{id}/image - Upload task image to S3
-export function uploadTodoImage(
+export async function uploadTodoImage(
   id: string,
   file: File,
   onProgress?: (percent: number) => void
@@ -202,25 +189,19 @@ export function uploadTodoImage(
   const formData = new FormData()
   formData.append("file", file)
 
-  return new Promise((resolve, reject) => {
-    apiClient
-      .post<{ imageUrl?: string }>(`/api/tasks/${id}/image`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-        onUploadProgress: (event) => {
-          if (!onProgress || !event.total) return
-          const percent = Math.round((event.loaded / event.total) * 100)
-          onProgress(percent)
-        },
-      })
-      .then(({ data }) => {
-        if (!data.imageUrl) {
-          reject(new Error("Upload response missing imageUrl"))
-          return
-        }
-        resolve(data.imageUrl)
-      })
-      .catch((err) => reject(new Error(`Failed to upload image: ${err.message}`)))
-  })
+  const { data } = await apiClient.post<{ imageUrl: string }>(
+    `/api/tasks/${id}/image`,
+    formData,
+    {
+      headers: { "Content-Type": "multipart/form-data" },
+      onUploadProgress: (e) => {
+        const percent = Math.round((e.loaded / (e.total ?? 1)) * 100)
+        onProgress?.(percent)
+      },
+    }
+  )
+
+  return data.imageUrl
 }
 
 // DELETE /api/tasks/{id}/image - Delete task image from S3

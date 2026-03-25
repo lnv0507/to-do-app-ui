@@ -79,8 +79,8 @@ export function TodoItem({ todo, dragHandleProps }: TodoItemProps) {
           onCheckedChange={async () => {
             try {
               await toggleTodo(todo.id)
-            } catch (error) {
-              console.error("Failed to toggle todo:", error)
+            } catch (error: any) {
+              console.error("Toggle todo failed:", error.response?.status, error.response?.data ?? error.message)
             }
           }}
           aria-label={`Mark "${todo.title}" as ${todo.completed ? "incomplete" : "complete"}`}
@@ -110,8 +110,8 @@ export function TodoItem({ todo, dragHandleProps }: TodoItemProps) {
             onClick={async () => {
               try {
                 await toggleFavorite(todo.id)
-              } catch (error) {
-                console.error("Failed to toggle favorite:", error)
+              } catch (error: any) {
+                console.error("Toggle favorite failed:", error.response?.status, error.response?.data ?? error.message)
               }
             }}
           >
@@ -138,8 +138,8 @@ export function TodoItem({ todo, dragHandleProps }: TodoItemProps) {
               <DropdownMenuItem onClick={async () => {
                 try {
                   await toggleTodo(todo.id)
-                } catch (error) {
-                  console.error("Failed to toggle todo:", error)
+                } catch (error: any) {
+                  console.error("Toggle todo (menu) failed:", error.response?.status, error.response?.data ?? error.message)
                 }
               }}>
                 <Checkbox
@@ -154,8 +154,8 @@ export function TodoItem({ todo, dragHandleProps }: TodoItemProps) {
                 onClick={async () => {
                   try {
                     await deleteTodo(todo.id)
-                  } catch (error) {
-                    console.error("Failed to delete todo:", error)
+                  } catch (error: any) {
+                    console.error("Delete todo failed:", error.response?.status, error.response?.data ?? error.message)
                   }
                 }}
               >
