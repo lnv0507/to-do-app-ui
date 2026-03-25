@@ -18,6 +18,11 @@ interface TodoStore {
   setTodoImage: (id: string, imageUrl?: string) => void
   syncTodoById: (id: string) => Promise<void>
 
+  // Favorites
+  toggleFavorite: (id: string) => Promise<void>
+  isFavorite: (id: string) => boolean
+  getFavoriteTodos: () => Todo[]
+
   // Filters
   setFilter: (filters: Partial<TodoFilters>) => void
   resetFilters: () => void
@@ -174,6 +179,38 @@ export const useTodoStore = create<TodoStore>()((set, get) => ({
           // Keep optimistic UI state if sync fails.
           console.error("Failed to sync todo by id:", error)
         }
+      },
+
+      toggleFavorite: async (id) => {
+        const todo = get().todos.find((t) => t.id === id)
+        if (!todo) return
+
+        const optimisticFavorite = !todo.isFavorite
+        set((state) => ({
+          todos: state.todos.map((t) => t.id === id ? { ...t, isFavorite: optimisticFavorite } : t),
+        }))
+
+        try {
+          const updatedTodo = await api.toggleTodoFavorite(todo)
+          set((state) => ({
+            todos: state.todos.map((t) => t.id === id ? updatedTodo : t),
+          }))
+        } catch (error) {
+          set((state) => ({
+            todos: state.todos.map((t) => t.id === id ? { ...t, isFavorite: todo.isFavorite } : t),
+            error: error instanceof Error ? error.message : "Failed to toggle favorite",
+          }))
+          throw error
+        }
+      },
+
+      isFavorite: (id) => {
+        return !!get().todos.find((t) => t.id === id)?.isFavorite
+      },
+
+      getFavoriteTodos: () => {
+        const { todos } = get()
+        return todos.filter((todo) => !!todo.isFavorite)
       },
 
       setFilter: (filters) => {
