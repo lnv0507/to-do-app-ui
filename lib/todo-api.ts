@@ -88,19 +88,19 @@ function parseRawDueDate(apiTodo: ApiTodo): string {
   return raw.split('T')[0]
 }
 
-// GET /api/tasks - Fetch all tasks
+// GET /tasks - Fetch all tasks
 export async function fetchTodos(): Promise<Todo[]> {
-  const { data } = await apiClient.get<ApiTodo[]>("/api/tasks")
+  const { data } = await apiClient.get<ApiTodo[]>("/tasks")
   return Array.isArray(data) ? data.map(transformApiTodo) : []
 }
 
-// GET /api/tasks/{id} - Fetch single task
+// GET /tasks/{id} - Fetch single task
 export async function fetchTodoById(id: string): Promise<Todo> {
-  const { data } = await apiClient.get<ApiTodo>(`/api/tasks/${id}`)
+  const { data } = await apiClient.get<ApiTodo>(`/tasks/${id}`)
   return transformApiTodo(data)
 }
 
-// POST /api/tasks - Create new task
+// POST /tasks - Create new task
 export async function createTodo(
   todo: Omit<Todo, "id" | "createdAt" | "updatedAt" | "completed">
 ): Promise<Todo> {
@@ -121,11 +121,11 @@ export async function createTodo(
   if (todo.imageUrl) payload.imageUrl = todo.imageUrl
   if (todo.dueDate) payload.dueDate = toBackendDate(todo.dueDate)
 
-  const { data } = await apiClient.post<ApiTodo>("/api/tasks", payload)
+  const { data } = await apiClient.post<ApiTodo>("/tasks", payload)
   return transformApiTodo(data)
 }
 
-// PUT /api/tasks/{id} - Update task
+// PUT /tasks/{id} - Update task
 export async function updateTodo(
   id: string,
   todo: Omit<Todo, "id" | "createdAt" | "updatedAt">
@@ -149,13 +149,13 @@ export async function updateTodo(
   if (todo.description) payload.description = todo.description
   payload.dueDate = todo.dueDate ? toBackendDate(todo.dueDate) : null
 
-  const { data } = await apiClient.put<ApiTodo>(`/api/tasks/${id}`, payload)
+  const { data } = await apiClient.put<ApiTodo>(`/tasks/${id}`, payload)
   return transformApiTodo(data)
 }
 
-// DELETE /api/tasks/{id} - Delete task
+// DELETE /tasks/{id} - Delete task
 export async function deleteTodo(id: string): Promise<void> {
-  await apiClient.delete(`/api/tasks/${id}`)
+  await apiClient.delete(`/tasks/${id}`)
 }
 
 // Helper: Toggle todo completion status
@@ -172,15 +172,15 @@ export async function toggleTodoCompletion(todo: Todo): Promise<Todo> {
   })
 }
 
-// PATCH /api/tasks/{id}/favorite - Toggle favorite status
+// PATCH /tasks/{id}/favorite - Toggle favorite status
 export async function toggleTodoFavorite(todo: Todo): Promise<Todo> {
-  const { data } = await apiClient.patch<ApiTodo>(`/api/tasks/${todo.id}/favorite`, {
+  const { data } = await apiClient.patch<ApiTodo>(`/tasks/${todo.id}/favorite`, {
     isFavorite: !todo.isFavorite,
   })
   return transformApiTodo(data)
 }
 
-// POST /api/tasks/{id}/image - Upload task image to S3
+// POST /tasks/{id}/image - Upload task image to S3
 export async function uploadTodoImage(
   id: string,
   file: File,
@@ -190,7 +190,7 @@ export async function uploadTodoImage(
   formData.append("file", file)
 
   const { data } = await apiClient.post<{ imageUrl: string }>(
-    `/api/tasks/${id}/image`,
+    `/tasks/${id}/image`,
     formData,
     {
       headers: { "Content-Type": "multipart/form-data" },
@@ -204,9 +204,9 @@ export async function uploadTodoImage(
   return data.imageUrl
 }
 
-// DELETE /api/tasks/{id}/image - Delete task image from S3
+// DELETE /tasks/{id}/image - Delete task image from S3
 export async function deleteTodoImage(id: string): Promise<void> {
-  await apiClient.delete(`/api/tasks/${id}/image`)
+  await apiClient.delete(`/tasks/${id}/image`)
 }
 
 // Transform a raw backend Task array (from REST or STOMP) into DueTaskNotification[]
@@ -224,9 +224,9 @@ export function transformDueTasksPayload(raw: unknown[]): DueTaskNotification[] 
   })
 }
 
-// GET /api/tasks/due - Fetch tasks that are due/upcoming for notifications
+// GET /tasks/due - Fetch tasks that are due/upcoming for notifications
 export async function fetchDueTasks(): Promise<DueTaskNotification[]> {
-  const response = await apiClient.get<ApiTodo[]>("/api/tasks/due", {
+  const response = await apiClient.get<ApiTodo[]>("/tasks/due", {
     validateStatus: (status) => status === 200 || status === 204,
   })
 

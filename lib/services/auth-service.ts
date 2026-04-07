@@ -12,7 +12,7 @@ export const AuthService = {
    * Register a new user
    */
   signup: async (data: SignUpRequest): Promise<string> => {
-    const { data: responseData } = await apiClient.post<string>("/api/v1/auth/signup", data);
+    const { data: responseData } = await apiClient.post<string>("/auth/signup", data);
     return responseData;
   },
 
@@ -20,7 +20,7 @@ export const AuthService = {
    * Log in an existing user
    */
   signin: async (data: SignInRequest): Promise<AuthResponse> => {
-    const { data: responseData } = await apiClient.post<AuthResponse>("/api/v1/auth/signin", data);
+    const { data: responseData } = await apiClient.post<AuthResponse>("/auth/signin", data);
     return responseData;
   },
 
@@ -28,7 +28,7 @@ export const AuthService = {
    * Confirm account with OTP
    */
   confirmOtp: async (data: VerifyOtpRequest): Promise<AuthResponse> => {
-    const { data: responseData } = await apiClient.post<AuthResponse>("/api/v1/auth/confirm-otp", data);
+    const { data: responseData } = await apiClient.post<AuthResponse>("/auth/confirm-otp", data);
     return responseData;
   },
 
@@ -36,7 +36,7 @@ export const AuthService = {
    * Refresh the access token using the refresh token cookie
    */
   refreshToken: async (): Promise<AuthResponse> => {
-    const { data: responseData } = await apiClient.post<AuthResponse>("/api/v1/auth/refresh-token");
+    const { data: responseData } = await apiClient.post<AuthResponse>("/auth/refresh-token");
     return responseData;
   },
 
@@ -44,7 +44,7 @@ export const AuthService = {
    * Verify device for Risk-Based Authentication (RBA)
    */
   verifyDevice: async (data: VerifyDeviceRequest): Promise<AuthResponse> => {
-    const { data: responseData } = await apiClient.post<AuthResponse>("/api/v1/auth/verify-device", data);
+    const { data: responseData } = await apiClient.post<AuthResponse>("/auth/verify-device", data);
     return responseData;
   },
 
