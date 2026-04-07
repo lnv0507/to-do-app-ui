@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { CheckSquare, Heart } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { LogoutButton } from "@/components/logout-button"
 import { TodoHeader } from "@/components/todo/todo-header"
 import { TodoStats } from "@/components/todo/todo-stats"
 import { TodoFilters } from "@/components/todo/todo-filters"
@@ -31,7 +32,10 @@ export default function TodosPage() {
             <CheckSquare className="size-5 text-primary" />
             <span>TodoApp</span>
           </div>
-          <ThemeToggle />
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <LogoutButton />
+          </div>
         </div>
       </header>
 
