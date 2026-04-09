@@ -1,12 +1,15 @@
 "use client"
 
-import { Trash2 } from "lucide-react"
+import { RefreshCcw, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useTodoStore } from "@/lib/todo-store"
 import { TodoForm } from "./todo-form"
 import { NotificationBell } from "./notification-bell"
+import { cn } from "@/lib/utils"
 
 export function TodoHeader() {
+  const fetchTodos = useTodoStore((s) => s.fetchTodos)
+  const isLoading = useTodoStore((s) => s.isLoading)
   const clearCompleted = useTodoStore((s) => s.clearCompleted)
   const todos = useTodoStore((s) => s.todos)
   const hasCompleted = todos.some((t) => t.completed)
@@ -20,6 +23,16 @@ export function TodoHeader() {
         </p>
       </div>
       <div className="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => fetchTodos()}
+          disabled={isLoading}
+          className="h-9 w-9"
+          title="Refresh tasks"
+        >
+          <RefreshCcw className={cn("size-4", isLoading && "animate-spin")} />
+        </Button>
         <NotificationBell />
         {hasCompleted && (
           <Button

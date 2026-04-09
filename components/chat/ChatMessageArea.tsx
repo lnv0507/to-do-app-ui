@@ -11,7 +11,7 @@ interface ChatMessageAreaProps {
 export function ChatMessageArea({ messages, isLoading }: ChatMessageAreaProps) {
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
 
-  // Tự động cuộn xuống khi có tin nhắn mới hoặc đang load
+  // Automatically scroll down when there are new messages or while loading
   useEffect(() => {
     endOfMessagesRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
@@ -21,7 +21,7 @@ export function ChatMessageArea({ messages, isLoading }: ChatMessageAreaProps) {
       {messages.length === 0 ? (
         <div className="h-full flex flex-col items-center justify-center text-muted-foreground opacity-50 space-y-3">
           <Bot className="w-12 h-12" />
-          <p className="text-sm">Bắt đầu trò chuyện với AI của bạn!</p>
+          <p className="text-sm">Start chatting with your AI!</p>
         </div>
       ) : (
         messages.map((msg) => (
@@ -34,7 +34,7 @@ export function ChatMessageArea({ messages, isLoading }: ChatMessageAreaProps) {
                 : 'bg-muted rounded-bl-none'
             )}
           >
-            {/* Hiển thị ngắt dòng nếu có (whitespace-pre-wrap) */}
+            {/* Render line breaks if present (whitespace-pre-wrap) */}
             <span className="whitespace-pre-wrap break-words">{msg.content}</span>
           </div>
         ))

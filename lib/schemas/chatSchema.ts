@@ -3,8 +3,8 @@ import { z } from 'zod';
 export const chatInputSchema = z.object({
   prompt: z
     .string()
-    .min(1, 'Vui lòng nhập nội dung tin nhắn.')
-    .max(4000, 'Tin nhắn quá dài (tối đa 4000 ký tự).'),
+    .min(1, 'Please enter a message content.')
+    .max(4000, 'Message is too long (maximum 4000 characters).'),
 });
 
 export type ChatInputType = z.infer<typeof chatInputSchema>;

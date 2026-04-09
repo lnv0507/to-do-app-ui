@@ -50,8 +50,26 @@ const processQueue = (error: any, token: string | null = null) => {
       prom.resolve(token);
     }
   });
-
   failedQueue = [];
+};
+
+/**
+ * Calls the backend logout endpoint to expire the HttpOnly refreshToken cookie,
+ * then clears local auth state and redirects to login.
+ * This prevents the stale-cookie loop where a revoked/expired refreshToken
+ * stays in the browser and causes infinite 4xx refresh retries.
+ */
+const forceLogout = async () => {
+  try {
+    // Tell backend to expire the HttpOnly cookie — JS cannot do this itself
+    await axios.post(`${API_BASE_URL}/auth/logout`, {}, { withCredentials: true });
+  } catch {
+    // Best-effort: even if this fails, still clear local state
+  }
+  useAuthStore.getState().logout();
+  if (typeof window !== 'undefined') {
+    window.location.href = '/auth/login';
+  }
 };
 
 // Response Interceptor: Handle global errors (like 401 Unauthorized)
@@ -92,10 +110,8 @@ apiClient.interceptors.response.use(
         }
       } catch (err) {
         processQueue(err, null);
-        useAuthStore.getState().logout();
-        if (typeof window !== 'undefined') {
-          window.location.href = '/auth/signin';
-        }
+        // Call backend logout to expire the HttpOnly cookie, then clear local state
+        await forceLogout();
         return Promise.reject(err);
       } finally {
         isRefreshing = false;

@@ -4,7 +4,8 @@ import {
   SignUpRequest,
   AuthResponse,
   VerifyOtpRequest,
-  VerifyDeviceRequest
+  VerifyDeviceRequest,
+  ResetPasswordRequest,
 } from "@/types/auth";
 
 export const AuthService = {
@@ -46,6 +47,13 @@ export const AuthService = {
   verifyDevice: async (data: VerifyDeviceRequest): Promise<AuthResponse> => {
     const { data: responseData } = await apiClient.post<AuthResponse>("/auth/verify-device", data);
     return responseData;
+  },
+
+  /**
+   * Reset password using the token from the security email link
+   */
+  resetPassword: async (data: ResetPasswordRequest): Promise<void> => {
+    await apiClient.post("/auth/reset-password", data);
   },
 
 };

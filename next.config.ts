@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: 'export',
+  output: "export",
+  trailingSlash: true,
 
   images: {
     unoptimized: true,
@@ -16,8 +17,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-
-  trailingSlash: true,
 };
 
 export default nextConfig;

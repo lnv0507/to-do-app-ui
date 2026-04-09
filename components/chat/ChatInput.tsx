@@ -28,7 +28,7 @@ export function ChatInput({ onSend, isLoading }: ChatInputProps) {
         className="flex w-full items-center space-x-2"
       >
         <Input
-          placeholder="Hỏi AI..."
+          placeholder="Ask AI..."
           autoComplete="off"
           disabled={isLoading}
           {...form.register("prompt")}

@@ -25,10 +25,13 @@ export interface VerifyDeviceRequest {
   verificationToken: string;
 }
 
+export interface ResetPasswordRequest {
+  token: string;
+  newPassword: string;
+}
+
 export interface User {
   id?: string;
   email: string;
   fullName: string;
-  // Add other user fields as needed
 }
-

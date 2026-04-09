@@ -13,7 +13,7 @@ export function ChatBot() {
   const { mutateAsync: askAi, isPending } = useAskAi();
 
   const handleSend = async (prompt: string) => {
-    // 1. Lưu message của user
+    // 1. Save user's message
     addMessage({
       id: Date.now().toString(),
       role: 'user',
@@ -24,7 +24,7 @@ export function ChatBot() {
     // 2. Fetch API
     try {
       const data = await askAi({ prompt });
-      // 3. Thêm response của AI vào store
+      // 3. Add AI's response to store
       addMessage({
         id: (Date.now() + 1).toString(),
         role: 'assistant',
@@ -35,7 +35,7 @@ export function ChatBot() {
       addMessage({
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: 'Xin lỗi, có lỗi xảy ra. Hãy thử lại.',
+        content: 'Sorry, an error occurred. Please try again.',
         createdAt: new Date(),
       });
     }
@@ -43,7 +43,7 @@ export function ChatBot() {
 
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
-      {/* Cửa sổ Chat */}
+      {/* Chat Window */}
       {isOpen && (
         <Card className="w-[350px] sm:w-[400px] h-[500px] max-h-[80vh] flex flex-col shadow-2xl overflow-hidden border-border/40">
           <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30">
@@ -66,7 +66,7 @@ export function ChatBot() {
         </Card>
       )}
 
-      {/* Nút Toggle */}
+      {/* Toggle Button */}
       <Button
         size="icon"
         className="h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-105 active:scale-95 text-white bg-primary hover:bg-primary/90"
